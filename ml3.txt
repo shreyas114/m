@@ -1,0 +1,83 @@
+#import the required libraries 
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler 
+from sklearn.metrics import accuracy_score,confusion_matrix
+import tensorflow as tf
+from tensorflow.keras.models import Sequential 
+from tensorflow.keras.layers import Dense
+
+
+#Load the dataset
+data = pd.read_csv('Churn_Modelling.csv')
+print("Loaded dataset")
+
+#removing the unnecessary coloumns
+data = data.drop(columns=['RowNumber','Surname', 'CustomerId'])
+print('2')
+
+#convert categorial variables to numeric variables by using one hot encoding
+data=pd.get_dummies(data,columns=['Geography','Gender'],drop_first = True)
+print('3')
+
+#define features and traget variables
+x = data.drop(columns=['Exited'])
+y = data['Exited']
+print("4")
+
+#train and test model
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
+print('5')
+
+#normalize the data using Standard scaler
+scaler=StandardScaler()
+x_train=scaler.fit_transform(x_train)
+x_test=scaler.transform(x_test)
+print("6")
+
+# Step 4: Build the neural network model
+def build_model(activation_func):
+    model = Sequential()
+    # First hidden layer with 16 neurons and specified activation function
+    model.add(Dense(16, input_dim=x_train.shape[1], activation=activation_func))
+    # Second hidden layer with 8 neurons and specified activation function
+    model.add(Dense(8, activation=activation_func))
+    # Output layer with 1 neuron (for binary classification) and sigmoid activation
+    model.add(Dense(1, activation='sigmoid'))
+
+    # Compile the model with Adam optimizer and binary crossentropy loss
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    return model
+
+# Step 5: Train and evaluate the model with different activation functions
+activations = ['relu', 'tanh', 'sigmoid']
+results = {}
+
+for activation in activations:
+    print(f"Training model with {activation} activation function...")
+    model = build_model(activation)
+
+    # Train the model for 10 epochs with a batch size of 32
+    model.fit(x_train, y_train, epochs=10, batch_size=32, verbose=0, validation_data=(x_test, y_test))
+
+    # Make predictions on the test set
+    y_pred = (model.predict(x_test) > 0.5).astype(int)
+
+    # Evaluate the model's performance
+    accuracy = accuracy_score(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
+
+    # Store the accuracy and confusion matrix for each activation function
+    results[activation] = {
+        "Accuracy": accuracy,
+        "Confusion Matrix": cm
+    }
+
+# Step 6: Print the results for each activation function
+for activation in activations:
+    print(f"\nResults for {activation} activation function:")
+    print(f"Accuracy: {results[activation]['Accuracy']:.4f}")
+    print("Confusion Matrix:")
+    print(results[activation]['Confusion Matrix'])
